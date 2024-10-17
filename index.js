@@ -61,7 +61,7 @@ async function Login(token, channelIds) {
     console.log(`Logged in to ` + chalk.red(client.user.tag) + `!`);
     client.user.setStatus("invisible");
 
-    const messages = fs.readFileSync("./data/messages.txt", "utf-8").split("\n");
+    const messages = fs.readFileSync("messages.txt", "utf-8").split("\n");
 
     let currentChannelIndex = 0;
 
