@@ -1,37 +1,43 @@
 const { Client, WebhookClient } = require("discord.js-selfbot-v13");
 const fs = require("fs-extra");
 const chalk = require("chalk");
-const config = process.env.CONFIG
-  ? JSON.parse(process.env.CONFIG)
-  : require("./config.json");
+require("dotenv").config(); 
 
 let log;
-if (config?.logWebhook?.length > 25) {
-  log = new WebhookClient({ url: config.logWebhook });
+const logWebhook = process.env.WEBHOOK;
+
+if (logWebhook && logWebhook.length > 25) {
+  log = new WebhookClient({ url: logWebhook });
 }
 
 let data;
 if (process.env.TOKENS) {
   data = JSON.parse(process.env.TOKENS);
 } else {
-  data = fs.readJsonSync("./tokens.json"); 
+  data = fs.readJsonSync("./tokens.json");
 }
 
 if (!data || !Array.isArray(data)) {
-  throw new Error(`Unable to find valid tokens.`);
+  throw new Error("Unable to find valid tokens.");
 }
 
-config.tokens = data.map(item => ({
+const tokens = data.map(item => ({
   token: item.token.trim(),
   channelIds: item.channelIds.map(channelId => channelId.trim())
 }));
 
-if (process.env.REPLIT_DB_URL && (!process.env.TOKENS || !process.env.CONFIG))
-  console.log(
-    `You are running on replit, please use its secret feature, to prevent your tokens and webhook from being stolen and misused.\nCreate a secret variable called "CONFIG" for your config, and a secret variable called "TOKENS" for your tokens.`
-  );
+const spamSpeed = parseInt(process.env.SPEED) || 500; 
+const deleteSpeed = parseInt(process.env.DELETESPEED) || 0; 
+const debug = process.env.DEBUG === "TRUE"; 
+const deleteMessages = process.env.DELETE === "TRUE"; 
 
-let lastSentMessage; 
+if (process.env.REPLIT_DB_URL && (!process.env.TOKENS || !process.env.WEBHOOK)) {
+  console.log(
+    `You are running on Replit, please use its secret feature to prevent your tokens and webhook from being stolen.\nCreate a secret variable called "WEBHOOK" for your webhook and a secret variable called "TOKENS" for your tokens.`
+  );
+}
+
+let lastSentMessage;
 
 async function Login(token, channelIds) {
   if (!token) {
@@ -55,9 +61,7 @@ async function Login(token, channelIds) {
 
   client.login(token).catch(() => {
     console.log(
-      `Failed to login with token "${chalk.red(
-        token
-      )}"! Please check if the token is valid.`
+      `Failed to login with token "${chalk.red(token)}"! Please check if the token is valid.`
     );
   });
 
@@ -65,9 +69,7 @@ async function Login(token, channelIds) {
     console.log(`Logged in to ` + chalk.red(client.user.tag) + `!`);
     client.user.setStatus("invisible");
 
-    const messages = fs
-      .readFileSync("./data/messages.txt", "utf-8")
-      .split("\n");
+    const messages = fs.readFileSync("./data/messages.txt", "utf-8").split("\n");
 
     let currentChannelIndex = 0;
 
@@ -81,16 +83,17 @@ async function Login(token, channelIds) {
       }
 
       const message = messages[Math.floor(Math.random() * messages.length)];
-      
       const sentMessage = await spamChannel.send(message);
-      
-      if (lastSentMessage) {
-        await lastSentMessage.delete().catch(err => console.log(chalk.red("Failed to delete message:", err)));
+
+      if (deleteMessages && lastSentMessage) {
+        setTimeout(async () => {
+          await lastSentMessage.delete().catch(err => console.log(chalk.red("Failed to delete message:", err)));
+        }, deleteSpeed);
       }
 
       lastSentMessage = sentMessage;
 
-      setTimeout(() => spamMessages(channelIds[currentChannelIndex]), config.spamSpeed);
+      setTimeout(() => spamMessages(channelIds[currentChannelIndex]), spamSpeed);
     }
 
     spamMessages(channelIds[currentChannelIndex]);
@@ -98,14 +101,14 @@ async function Login(token, channelIds) {
 }
 
 async function start() {
-  for (var i = 0; i < config.tokens.length; i++) {
-    await Login(config.tokens[i].token, config.tokens[i].channelIds);
+  for (const { token, channelIds } of tokens) {
+    await Login(token, channelIds);
   }
   if (log) {
     const embed = {
       title: `Started!`,
       url: "https://github.com/XenDevs/Spammer",
-      description: `Found ${config.tokens.length} tokens!`,
+      description: `Found ${tokens.length} tokens!`,
       color: "#5cf7a9",
       timestamp: new Date(),
       footer: {
@@ -122,28 +125,28 @@ async function start() {
 }
 
 process.on("unhandledRejection", (reason, p) => {
-  if (config.debug) {
+  if (debug) {
     console.log(" [Anti Crash] >>  Unhandled Rejection/Catch");
     console.log(reason, p);
   }
 });
 
 process.on("uncaughtException", (e, o) => {
-  if (config.debug) {
+  if (debug) {
     console.log(" [Anti Crash] >>  Uncaught Exception/Catch");
     console.log(e, o);
   }
 });
 
 process.on("uncaughtExceptionMonitor", (err, origin) => {
-  if (config.debug) {
+  if (debug) {
     console.log(" [AntiCrash] >>  Uncaught Exception/Catch (MONITOR)");
     console.log(err, origin);
   }
 });
 
 process.on("multipleResolves", (type, promise, reason) => {
-  if (config.debug) {
+  if (debug) {
     console.log(" [AntiCrash] >>  Multiple Resolves");
     console.log(type, promise, reason);
   }
