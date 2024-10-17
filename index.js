@@ -1,14 +1,7 @@
-const { Client, WebhookClient } = require("discord.js-selfbot-v13");
+const { Client } = require("discord.js-selfbot-v13");
 const fs = require("fs-extra");
 const chalk = require("chalk");
-require("dotenv").config(); 
-
-let log;
-const logWebhook = process.env.WEBHOOK;
-
-if (logWebhook && logWebhook.length > 25) {
-  log = new WebhookClient({ url: logWebhook });
-}
+require("dotenv").config();
 
 let data;
 if (process.env.TOKENS) {
@@ -28,12 +21,11 @@ const tokens = data.map(item => ({
 
 const spamSpeed = parseInt(process.env.SPEED) || 500; 
 const deleteSpeed = parseInt(process.env.DELETESPEED) || 0; 
-const debug = process.env.DEBUG === "TRUE"; 
 const deleteMessages = process.env.DELETE === "TRUE"; 
 
-if (process.env.REPLIT_DB_URL && (!process.env.TOKENS || !process.env.WEBHOOK)) {
+if (process.env.REPLIT_DB_URL && !process.env.TOKENS) {
   console.log(
-    `You are running on Replit, please use its secret feature to prevent your tokens and webhook from being stolen.\nCreate a secret variable called "WEBHOOK" for your webhook and a secret variable called "TOKENS" for your tokens.`
+    `You are running on Replit, please use its secret feature to prevent your tokens from being stolen.\nCreate a secret variable called "TOKENS" for your tokens.`
   );
 }
 
@@ -43,7 +35,7 @@ async function Login(token, channelIds) {
   if (!token) {
     console.log(
       chalk.redBright("You must specify a (valid) token.") +
-        chalk.white(` ${token} is invalid.`)
+      chalk.white(` ${token} is invalid.`)
     );
     return;
   }
@@ -85,6 +77,8 @@ async function Login(token, channelIds) {
       const message = messages[Math.floor(Math.random() * messages.length)];
       const sentMessage = await spamChannel.send(message);
 
+      console.log(`Account: ` + chalk.red(client.user.tag) + ` Sent "${message}" in channel: ${spamChannel.name}`);
+
       if (deleteMessages && lastSentMessage) {
         setTimeout(async () => {
           await lastSentMessage.delete().catch(err => console.log(chalk.red("Failed to delete message:", err)));
@@ -104,52 +98,6 @@ async function start() {
   for (const { token, channelIds } of tokens) {
     await Login(token, channelIds);
   }
-  if (log) {
-    const embed = {
-      title: `Started!`,
-      url: "https://github.com/XenDevs/Spammer",
-      description: `Found ${tokens.length} tokens!`,
-      color: "#5cf7a9",
-      timestamp: new Date(),
-      footer: {
-        text: "Spammer by @XenDevs",
-        icon_url: "https://avatars.githubusercontent.com/u/84374752?v=4",
-      },
-    };
-    log.send({
-      username: "Spammer Logs",
-      avatarURL: "https://avatars.githubusercontent.com/u/84374752?v=4",
-      embeds: [embed],
-    });
-  }
 }
-
-process.on("unhandledRejection", (reason, p) => {
-  if (debug) {
-    console.log(" [Anti Crash] >>  Unhandled Rejection/Catch");
-    console.log(reason, p);
-  }
-});
-
-process.on("uncaughtException", (e, o) => {
-  if (debug) {
-    console.log(" [Anti Crash] >>  Uncaught Exception/Catch");
-    console.log(e, o);
-  }
-});
-
-process.on("uncaughtExceptionMonitor", (err, origin) => {
-  if (debug) {
-    console.log(" [AntiCrash] >>  Uncaught Exception/Catch (MONITOR)");
-    console.log(err, origin);
-  }
-});
-
-process.on("multipleResolves", (type, promise, reason) => {
-  if (debug) {
-    console.log(" [AntiCrash] >>  Multiple Resolves");
-    console.log(type, promise, reason);
-  }
-});
 
 start();
