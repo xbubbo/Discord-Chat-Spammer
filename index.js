@@ -1,11 +1,10 @@
-version = "1.1.0";
-
 const { Client, WebhookClient } = require("discord.js-selfbot-v13");
 const fs = require("fs-extra");
 const chalk = require("chalk");
 const config = process.env.CONFIG
   ? JSON.parse(process.env.CONFIG)
   : require("./config.json");
+
 let log;
 if (config?.logWebhook?.length > 25) {
   log = new WebhookClient({ url: config.logWebhook });
@@ -32,12 +31,15 @@ if (process.env.REPLIT_DB_URL && (!process.env.TOKENS || !process.env.CONFIG))
     `You are running on replit, please use its secret feature, to prevent your tokens and webhook from being stolen and misused.\nCreate a secret variable called "CONFIG" for your config, and a secret variable called "TOKENS" for your tokens.`
   );
 
+let lastSentMessage; 
+
 async function Login(token, channelIds) {
   if (!token) {
     console.log(
       chalk.redBright("You must specify a (valid) token.") +
         chalk.white(` ${token} is invalid.`)
     );
+    return;
   }
 
   if (!channelIds || !Array.isArray(channelIds) || channelIds.length === 0) {
@@ -46,6 +48,7 @@ async function Login(token, channelIds) {
         "You must specify (valid) channel IDs for all your tokens. These are the channels in which they will spam."
       )
     );
+    return;
   }
 
   const client = new Client({ checkUpdate: false, readyStatus: false });
@@ -77,22 +80,17 @@ async function Login(token, channelIds) {
         return;
       }
 
-      for (let i = 0; i < 10; i++) {
-        const message = messages[Math.floor(Math.random() * messages.length)];
-        const sentMessage = await spamChannel.send(message);
-
-        // Check if delete is set to true in config
-        if (config.delete) {
-          setTimeout(() => {
-            sentMessage.delete().catch(err => console.log(chalk.red("Failed to delete message:", err)));
-          }, parseInt(config.deleteSpeed, 10));
-        }
-
-        await new Promise(resolve => setTimeout(resolve, config.spamSpeed));
+      const message = messages[Math.floor(Math.random() * messages.length)];
+      
+      const sentMessage = await spamChannel.send(message);
+      
+      if (lastSentMessage) {
+        await lastSentMessage.delete().catch(err => console.log(chalk.red("Failed to delete message:", err)));
       }
 
-      currentChannelIndex = (currentChannelIndex + 1) % channelIds.length;
-      spamMessages(channelIds[currentChannelIndex]);
+      lastSentMessage = sentMessage;
+
+      setTimeout(() => spamMessages(channelIds[currentChannelIndex]), config.spamSpeed);
     }
 
     spamMessages(channelIds[currentChannelIndex]);

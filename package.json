@@ -9,7 +9,7 @@
     "fs-extra": "^11.2.0"
   },
   "scripts": {
-    "test": "node --no-deprecation index.js"
+    "start": "node index.js"
   },
   "repository": {
     "type": "git",

@@ -2,3 +2,5 @@ package-lock.json
 node_modules
 tokens.json
 config.json
+.env
+messages.txt
